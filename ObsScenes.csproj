@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0-windows</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><Version>1.0.0</Version></PropertyGroup>
+  <ItemGroup><Reference Include="StreamUI.Contracts"><HintPath>$(StreamUISdkPath)/StreamUI.Contracts.dll</HintPath><Private>false</Private></Reference><Compile Remove="tests/**/*.cs"/></ItemGroup>
+  <Target Name="CheckStreamUISdk" BeforeTargets="ResolveReferences"><Error Condition="!Exists('$(StreamUISdkPath)/StreamUI.Contracts.dll')" Text="Pass -p:StreamUISdkPath=PATH_TO_CORE_SDK or run build.ps1 -SdkPath PATH_TO_CORE_SDK."/></Target>
+</Project>

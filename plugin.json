@@ -1,0 +1,8 @@
+{
+  "id": "obs-scenes", "name": "OBS 场景联动", "version": "1.0.0", "sdkVersion": 1,
+  "assembly": "ObsScenes.dll", "type": "StreamUI.ObsScenes.ObsScenesPlugin",
+  "capabilities": ["obs.scenes", "obs.transitions"], "settingsPage": "settings.html",
+  "legacySettingsKey": "obs",
+  "repository": "https://github.com/rorangeeee/StreamUI-Plugin-ObsScenes",
+  "build": { "kind": "dotnet", "project": "ObsScenes.csproj", "sdkVersion": 1 }
+}
