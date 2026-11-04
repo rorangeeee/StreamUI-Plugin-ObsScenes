@@ -101,6 +101,8 @@ public sealed class ObsSceneService : IAsyncDisposable
                 SetStatus(new("connecting", Detail: "正在读取 OBS 当前输出场景…"), runId);
                 string? requestId = null;
                 long sceneRevision = 0, queryRevision = 0, responseDeadline = 0;
+                bool awaitingTransitionScene = false;
+                long transitionProbeDeadline = 0;
                 var nextProbe = Environment.TickCount64;
                 async Task QueryScene()
                 {
@@ -136,14 +138,24 @@ public sealed class ObsSceneService : IAsyncDisposable
                         if (type == "CurrentProgramSceneChanged")
                         {
                             scene = data.GetProperty("eventData").GetProperty("sceneName").GetString(); sceneRevision++;
+                            awaitingTransitionScene = false;
                         }
                         else if (type == "SceneTransitionStarted")
                         {
                             var name = data.GetProperty("eventData").GetProperty("transitionName").GetString() ?? "";
+                            // OBS 33 reports CurrentProgramSceneChanged when the
+                            // transition stops. Its program-scene query already
+                            // exposes the destination at the start, including Stingers.
+                            // Invalidate a health query issued before this event.
+                            requestId = null; sceneRevision++;
+                            awaitingTransitionScene = true;
+                            transitionProbeDeadline = Environment.TickCount64 + (long)options.ResponseTimeout.TotalMilliseconds;
                             SetStatus(Status with { Transition = new(Guid.NewGuid().ToString("N"), name, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), "started") }, runId);
+                            await QueryScene();
                         }
                         else if (type is "SceneTransitionEnded" or "SceneTransitionVideoEnded")
                         {
+                            awaitingTransitionScene = false;
                             var name = data.GetProperty("eventData").GetProperty("transitionName").GetString() ?? "";
                             if (Status.Transition is { } transition && transition.Name == name)
                                 SetStatus(Status with { Transition = transition with { Phase = type == "SceneTransitionEnded" ? "ended" : "video-ended" } }, runId);
@@ -151,6 +163,7 @@ public sealed class ObsSceneService : IAsyncDisposable
                         }
                         else if (type == "CurrentSceneCollectionChanging")
                         {
+                            awaitingTransitionScene = false;
                             requestId = null; sceneRevision++;
                             nextProbe = Environment.TickCount64 + (long)options.HealthInterval.TotalMilliseconds;
                             SetStatus(Status with { Transition = null }, runId);
@@ -172,6 +185,11 @@ public sealed class ObsSceneService : IAsyncDisposable
                         scene = response.TryGetProperty("sceneName", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString() : null;
                         scene ??= response.TryGetProperty("currentProgramSceneName", out var legacyName) && legacyName.ValueKind == JsonValueKind.String ? legacyName.GetString() : null;
                         if (string.IsNullOrWhiteSpace(scene)) throw new InvalidDataException("OBS 未返回有效的输出场景，请确认当前场景集合已加载。");
+                        // The start signal can beat OBS's UI-thread scene update.
+                        // Retry next frame while it still reports the old scene.
+                        if (awaitingTransitionScene && scene == Status.Scene && Environment.TickCount64 < transitionProbeDeadline)
+                            nextProbe = Environment.TickCount64 + 16;
+                        else awaitingTransitionScene = false;
                     }
                     if (scene is null || token.IsCancellationRequested || runId != Interlocked.Read(ref generation)) continue;
                     SetStatus(Status with { State = "connected", Scene = scene, Error = null, Detail = null }, runId);

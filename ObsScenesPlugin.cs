@@ -16,8 +16,10 @@ public sealed class ObsScenesPlugin : IStreamUIPlugin
         obs.Changed += () => context.Publish("status", obs.Status);
         obs.SceneChanged += name => {
             if (name != previousScene) {
+                var transition = obs.Status.Transition is { Phase: "started" } active ? active : null;
                 previousScene = name;
-                context.Publish("scene-changed", new { id = Guid.NewGuid().ToString("N"), name, startedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
+                context.Publish("scene-changed", new { id = transition?.Id ?? Guid.NewGuid().ToString("N"), name,
+                    startedAt = transition?.StartedAt ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
             }
             return Task.CompletedTask;
         };
