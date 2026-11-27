@@ -4,7 +4,7 @@ StreamUICore 的独立 OBS WebSocket v5 观察插件。需要 Windows x64、.NET
 
 ## 构建与使用
 
-克隆到 Core/plugins/obs-scenes，然后执行：
+克隆到 Core/plugins/when.obs-scenes（或开发目录 Core/plugins/obs-scenes），然后执行：
 
 ~~~powershell
 powershell.exe -NoProfile -File build.ps1 -SdkPath <Core>/sdk/native
@@ -14,8 +14,8 @@ powershell.exe -NoProfile -File build.ps1 -SdkPath <Core>/sdk/native
 
 ## 公开能力
 
-- plugin.obs-scenes.status：{state,scene,error,transition,detail}。
-- plugin.obs-scenes.scene-changed：{id,name,startedAt}，仅在节目目标场景名改变时发布。周期健康查询和转场结束通知不会重复发布相同场景。
+- `plugin.when.obs-scenes.status`：`{state,scene,error,transition,detail}`。
+- `plugin.when.obs-scenes.scene-changed`：`{id,name,startedAt}`，仅在节目目标场景名改变时发布。周期健康查询和转场结束通知不会重复发布相同场景。
 - status.transition 可包含 OBS 转场时钟和阶段；是否使用它由场景组件决定。
 
 客户端可从 plugins[].topics.status 取得初始状态。地址和密码保存在插件私有设置，不在公开状态中。插件只观察 OBS，不发送切换 OBS 场景的命令。
